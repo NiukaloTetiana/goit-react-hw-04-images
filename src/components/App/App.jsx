@@ -1,5 +1,5 @@
 // import axios from 'axios';
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { getPhotos } from 'components/api/gallery';
 import { ImageGallery } from '../ImageGallery/ImageGallery';
 import { Searchbar } from '../Searchbar/Searchbar';
@@ -11,96 +11,77 @@ import { Modal } from 'components/Modal/Modal';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-export class App extends Component {
-  state = {
-    query: '',
-    photos: [],
-    page: 1,
-    loading: false,
-    error: null,
-    totalPhotos: 0,
-    isButtonShow: false,
-    isEmpty: false,
-    isLoadMore: false,
-    largeImageURL: '',
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isButtonShow, setIsButtonShow] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
+
+  useEffect(() => {
+    if (!query) return;
+    setLoading(true);
+
+    (async () => {
+      try {
+        const { results, total } = await getPhotos(query, page);
+
+        if (!results.length) {
+          setIsEmpty(true);
+          toast.error(
+            'Sorry, there are not any photos on your search. Please, try again.'
+          );
+          return;
+        }
+        if (page === 1) {
+          toast.success(`Hooray! We found ${total} photos on your request!`);
+        }
+
+        setPhotos(prev => [...prev, ...results]);
+        setIsButtonShow(page < Math.ceil(total / 20));
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [query, page]);
+
+  const handleSubmit = query => {
+    setQuery(query);
+    setIsEmpty(false);
+    setPhotos([]);
+    setPage(1);
+    setError(null);
+    setLargeImageURL('');
+    setIsButtonShow(false);
+    setLoading(false);
   };
 
-  componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    if (prevState.query !== query || prevState.page !== page) {
-      this.setState({ loading: true });
-      getPhotos(query, page)
-        .then(({ results, total }) => {
-          if (!results.length) {
-            this.setState({ isEmpty: true });
-            toast.error(
-              'Sorry, there are not any photos on your search. Please, try again.'
-            );
-            return;
-          }
-          if (page === 1) {
-            toast.success(`Hooray! We found ${total} photos on your request!`);
-          }
-          this.setState(prev => ({
-            photos: [...prev.photos, ...results],
-            isButtonShow: page < Math.ceil(total / 20),
-          }));
-        })
-        .catch(error => this.setState({ error: error.message }))
-        .finally(() => this.setState({ loading: false }));
-    }
-  }
-
-  handleSubmit = query => {
-    this.setState({
-      query,
-      isEmpty: false,
-      photos: [],
-      page: 1,
-      error: null,
-      largeImageURL: '',
-      isButtonShow: false,
-      loading: false,
-    });
+  const handleLoadMore = () => {
+    setPage(prev => prev + 1);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const handleClickImg = (url = '') => {
+    setLargeImageURL(url);
   };
 
-  handleClickImg = url => {
-    this.setState({ largeImageURL: url });
-  };
-
-  render() {
-    const {
-      photos,
-      query,
-      loading,
-      isButtonShow,
-      error,
-      largeImageURL,
-      isEmpty,
-    } = this.state;
-
-    return (
-      <Container>
-        <Searchbar onSubmit={this.handleSubmit} />
-        {!query && <Text>Let`s find photos together!</Text>}
-        {!error && (
-          <ImageGallery photos={photos} openModal={this.handleClickImg} />
-        )}
-        {loading && <Loader />}
-        {isButtonShow && <Button onClick={this.handleLoadMore} />}
-        {isEmpty && <Text>There are no photos matching your search...</Text>}
-        {error && <Text>Oops... Sorry, something went wrong {error}.</Text>}
-        {largeImageURL && (
-          <Modal url={largeImageURL} closeModal={this.handleClickImg} />
-        )}
-        <ToastContainer />
-      </Container>
-    );
-  }
-}
+  return (
+    <Container>
+      <Searchbar onSubmit={handleSubmit} />
+      {!query && <Text>Let`s find photos together!</Text>}
+      {!error && <ImageGallery photos={photos} openModal={handleClickImg} />}
+      {loading && <Loader />}
+      {isButtonShow && <Button onClick={handleLoadMore} />}
+      {isEmpty && <Text>There are no photos matching your search...</Text>}
+      {error && <Text>Oops... Sorry, something went wrong {error}.</Text>}
+      {largeImageURL && (
+        <Modal url={largeImageURL} closeModal={handleClickImg} />
+      )}
+      <ToastContainer />
+    </Container>
+  );
+};
