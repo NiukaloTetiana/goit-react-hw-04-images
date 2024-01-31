@@ -1,9 +1,6 @@
 import { createGlobalStyle } from 'styled-components';
 
 export const GlobalStyle = createGlobalStyle`
-  body {
-    background-color: rgba(251, 216, 232, 0.542);
-  }
 
   code {
     font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
